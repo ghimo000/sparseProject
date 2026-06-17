@@ -65,6 +65,6 @@ Il **focus della valutazione è l'architettura** (correttezza, chiarezza, qualit
 - [REGOLE.md](REGOLE.md) — regole di dominio della commessa (distillate).
 - [docs/Commessa.md](docs/Commessa.md) — specifica ufficiale (fonte di verità del dominio).
 - [docs/specs/](docs/specs/) — spec per slice (contratti prima del codice).
-- [docs/diario-sessione-01.md](docs/diario-sessione-01.md) — diario di lavoro.
+- [docs/diario/diario-sessione-01.md](docs/diario/diario-sessione-01.md) — diario di lavoro.
 - [docs/Appunti_LearningProject.md](docs/Appunti_LearningProject.md) — appunti del team (Agile/Scrum, sintesi commessa).
 - `app/` — codice dell'applicazione.
