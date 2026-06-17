@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BlueHarbor — Registrazione navi</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>BlueHarbor</h1>
+    <span class="day">Giorno corrente: <strong id="current-day">—</strong></span>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Registra una nave <small>(Operatore)</small></h2>
+      <button id="btn-arrival" type="button">📡 Nuovo arrivo dal faro</button>
+
+      <form id="form-ship" hidden>
+        <fieldset>
+          <legend>Dati dal faro (sola lettura)</legend>
+          <div class="readonly-grid">
+            <div>Taglia<br /><strong id="f-size">—</strong></div>
+            <div>Arrivo tra (giorni)<br /><strong id="f-offset">—</strong></div>
+            <div>Occupazione (giorni)<br /><strong id="f-occupation">—</strong></div>
+          </div>
+        </fieldset>
+
+        <label>Nome nave *
+          <input id="i-name" type="text" maxlength="100" required />
+        </label>
+        <label>Note
+          <textarea id="i-notes" maxlength="500" rows="2"></textarea>
+        </label>
+
+        <button id="btn-create" type="submit">Crea nave (Pending)</button>
+        <p id="msg" class="msg"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Navi registrate</h2>
+      <table id="ships">
+        <thead>
+          <tr>
+            <th>Id</th><th>Nome</th><th>Taglia</th>
+            <th>Arrivo (giorno)</th><th>Durata</th><th>Stato</th><th>Note</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    Il Faro è una libreria a sé, SENZA riferimenti al dominio o al DB di BlueHarbor.
+    Questa separazione fisica è voluta: il compilatore impedisce al faro
+    di dipendere dal dominio, mantenendo la seam pulita.
+  -->
+
+</Project>
