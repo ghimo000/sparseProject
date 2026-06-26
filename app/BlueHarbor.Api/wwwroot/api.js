@@ -9,6 +9,12 @@ const API = {
     return res.json();
   },
 
+  async nextDay() {
+    const res = await fetch("/api/state/next-day", { method: "POST" });
+    if (!res.ok) throw new Error("Impossibile avanzare il giorno.");
+    return res.json();
+  },
+
   async generateArrival() {
     const res = await fetch("/api/arrivals", { method: "POST" });
     if (!res.ok) throw new Error("Il faro non ha risposto.");

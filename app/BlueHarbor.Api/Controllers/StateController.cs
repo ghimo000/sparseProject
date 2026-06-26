@@ -1,6 +1,5 @@
-using BlueHarbor.Api.Data;
+using BlueHarbor.Api.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace BlueHarbor.Api.Controllers;
 
@@ -8,15 +7,21 @@ namespace BlueHarbor.Api.Controllers;
 [Route("api/state")]
 public class StateController : ControllerBase
 {
-    private readonly BlueHarborDbContext _db;
+    private readonly VirtualTimeService _time;
 
-    public StateController(BlueHarborDbContext db) => _db = db;
+    public StateController(VirtualTimeService time) => _time = time;
 
     /// <summary>Giorno virtuale corrente.</summary>
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var state = await _db.AppState.SingleAsync();
-        return Ok(new { currentDay = state.CurrentDay });
+        return Ok(await _time.GetStateAsync());
+    }
+
+    /// <summary>Avanza il giorno virtuale di una unità.</summary>
+    [HttpPost("next-day")]
+    public async Task<IActionResult> NextDay()
+    {
+        return Ok(await _time.AdvanceOneDayAsync());
     }
 }

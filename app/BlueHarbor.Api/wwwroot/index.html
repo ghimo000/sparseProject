@@ -9,7 +9,12 @@
 <body>
   <header>
     <h1>BlueHarbor</h1>
-    <span class="day">Giorno corrente: <strong id="current-day">—</strong></span>
+    <div class="clock">
+      <span>Data corrente: <strong id="current-date">—</strong></span>
+      <span class="day-index">Giorno virtuale: <strong id="current-day">—</strong></span>
+      <button id="btn-next-day" type="button">Next Day</button>
+      <span id="clock-msg" class="clock-msg" aria-live="polite"></span>
+    </div>
   </header>
 
   <main>

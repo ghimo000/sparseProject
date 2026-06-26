@@ -3,9 +3,14 @@ const $ = (id) => document.getElementById(id);
 // I dati del faro per l'arrivo in corso (anteprima → conferma).
 let currentArrival = null;
 
+function renderState(state) {
+  $("current-date").textContent = formatDate(state.currentDate);
+  $("current-day").textContent = state.currentDay;
+}
+
 async function refreshState() {
   const state = await API.getState();
-  $("current-day").textContent = state.currentDay;
+  renderState(state);
 }
 
 async function refreshShips() {
@@ -25,6 +30,21 @@ async function refreshShips() {
     tbody.appendChild(tr);
   }
 }
+
+$("btn-next-day").addEventListener("click", async () => {
+  const button = $("btn-next-day");
+  button.disabled = true;
+  $("clock-msg").textContent = "";
+  try {
+    const state = await API.nextDay();
+    renderState(state);
+    await refreshShips();
+  } catch (err) {
+    $("clock-msg").textContent = "Errore: " + err.message;
+  } finally {
+    button.disabled = false;
+  }
+});
 
 // 1) L'Operatore chiede un arrivo: il faro genera, mostriamo i dati in sola lettura.
 $("btn-arrival").addEventListener("click", async () => {
@@ -67,6 +87,12 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
   );
+}
+
+function formatDate(isoDate) {
+  if (!isoDate) return "—";
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 // Avvio

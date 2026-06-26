@@ -2,12 +2,16 @@
 body { font-family: system-ui, sans-serif; margin: 0; color: #1a2b3c; background: #f4f7fa; }
 header { background: #0a3d62; color: #fff; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
 header h1 { margin: 0; font-size: 1.3rem; }
+.clock { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; justify-content: flex-end; }
+.day-index { color: #c9d8e6; font-size: .9rem; }
+.clock-msg { color: #ffd6d6; font-size: .85rem; min-width: 10rem; }
 main { padding: 1.5rem; display: grid; gap: 1.5rem; max-width: 900px; margin: 0 auto; }
 .panel { background: #fff; border-radius: 8px; padding: 1.2rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
 .panel h2 { margin-top: 0; font-size: 1.1rem; }
 .panel h2 small { color: #7a8a9a; font-weight: normal; }
 button { background: #0a79df; color: #fff; border: 0; padding: .6rem 1rem; border-radius: 6px; cursor: pointer; font-size: .95rem; }
 button:hover { background: #0866ba; }
+button:disabled { background: #7a8a9a; cursor: wait; }
 form { margin-top: 1rem; display: grid; gap: .8rem; }
 fieldset { border: 1px solid #d0d8e0; border-radius: 6px; margin: 0; }
 .readonly-grid { display: flex; gap: 2rem; }
@@ -16,3 +20,8 @@ input, textarea { padding: .5rem; border: 1px solid #c0c8d0; border-radius: 5px;
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e0e6ec; }
 .msg { font-weight: 600; min-height: 1.2em; color: #b00020; }
+
+@media (max-width: 720px) {
+  header { align-items: flex-start; flex-direction: column; gap: .8rem; }
+  .clock { justify-content: flex-start; }
+}

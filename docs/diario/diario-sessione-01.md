@@ -1,7 +1,7 @@
 # Diario — Sessione 01 (2026-06-17)
 
 Sintesi di cosa abbiamo costruito e **perché**. Per i dettagli del contratto vedi
-[specs/01-faro-registrazione-nave.md](specs/01-faro-registrazione-nave.md).
+[specs/01-faro-registrazione-nave.md](../specs/01-faro-registrazione-nave.md).
 
 ## Obiettivo della sessione
 

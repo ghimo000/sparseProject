@@ -96,3 +96,8 @@ Le assunzioni sono ammesse solo se motivate.
 - [docs/diario/diario-sessione-01.md](docs/diario/diario-sessione-01.md) - diario di lavoro.
 - [Appunti/Appunti_LearningProject.md](Appunti/Appunti_LearningProject.md) - appunti del team.
 - `app/` - codice dell'applicazione.
+
+
+6 - START
+
+dotnet run --project app/BlueHarbor.Api

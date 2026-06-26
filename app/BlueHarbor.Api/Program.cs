@@ -22,6 +22,7 @@ builder.Services.AddScoped<IShipArrivalSource, RandomShipArrivalSource>();
 
 // Regole di dominio.
 builder.Services.AddScoped<ShipRegistrationService>();
+builder.Services.AddScoped<VirtualTimeService>();
 
 var app = builder.Build();
 
