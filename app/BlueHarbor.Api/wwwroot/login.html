@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BlueHarbor - Login</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>BlueHarbor</h1>
+    <span class="day">Accesso area riservata</span>
+  </header>
+
+  <main>
+    <section class="panel login-panel">
+      <h2 id="login-title">Accesso</h2>
+      <p id="login-error" class="msg" hidden>Credenziali non corrette.</p>
+
+      <form method="post" action="/login">
+        <input id="return-url" name="returnUrl" type="hidden" value="/" />
+
+        <label>Nome utente
+          <input name="username" type="text" autocomplete="username" required autofocus />
+        </label>
+
+        <label>Password
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <div class="form-actions">
+          <button type="submit">Accedi</button>
+          <a href="/">Torna alla home</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script src="login.js"></script>
+</body>
+</html>

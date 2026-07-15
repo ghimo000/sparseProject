@@ -1,0 +1,21 @@
+# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+project.lock.json
+artifacts/
+.tmp/
+
+# --- IDE ---
+.vs/
+.idea/
+.vscode/
+
+# --- Build / risultati ---
+[Dd]ebug/
+[Rr]elease/
+
+# --- OS ---
+Thumbs.db
+.DS_Store

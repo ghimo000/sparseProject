@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BlueHarbor - Scheduler</title>
+  <link rel="stylesheet" href="style.css?v=issue-03" />
+</head>
+<body class="operational-page">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">BH</span>
+      <div>
+        <h1>BlueHarbor</h1>
+        <span>Terminal operations</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="role-label">Scheduler</span>
+      <span class="day">Giorno <strong id="current-day">-</strong> - <strong id="current-date">-</strong></span>
+      <button id="btn-refresh" class="secondary" type="button">Aggiorna</button>
+      <button id="btn-next-day" type="button">Next Day</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Navi in attesa <small>(Scheduler)</small></h2>
+      <table id="pending-ships">
+        <thead>
+          <tr>
+            <th>Id</th><th>Nome</th><th>Taglia</th>
+            <th>Arrivo (giorno)</th><th>Durata</th><th>Note</th><th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty-pending" class="muted" hidden>Nessuna nave pending.</p>
+      <p id="msg" class="msg"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Banchine</h2>
+      <table id="berths">
+        <thead>
+          <tr>
+            <th>Banchina</th><th>Taglia</th><th>Stato oggi</th><th>Nave corrente</th><th>Prossima prenotazione</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Storico navi</h2>
+      <table id="ships-history">
+        <thead>
+          <tr>
+            <th>Id</th><th>Nome</th><th>Taglia</th>
+            <th>Banchina</th><th>Arrivo</th><th>Durata</th><th>Stato</th><th>Note</th><th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty-history" class="muted" hidden>Nessuna nave registrata.</p>
+    </section>
+  </main>
+
+  <a class="page-primary-action" href="operator.html" aria-label="Apri l'area Operatore per registrare un nuovo arrivo dal faro">
+    Nuovo arrivo dal faro
+  </a>
+
+  <script src="api.js"></script>
+  <script src="scheduler.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BlueHarbor - Operatore</title>
+  <link rel="stylesheet" href="style.css?v=issue-03" />
+</head>
+<body class="operational-page">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">BH</span>
+      <div>
+        <h1>BlueHarbor</h1>
+        <span>Terminal operations</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="role-label">Operatore</span>
+      <span class="day">Giorno <strong id="current-day">-</strong> - <strong id="current-date">-</strong></span>
+      <button id="btn-refresh" class="secondary" type="button">Aggiorna</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Registra una nave <small>(Operatore)</small></h2>
+      <p id="msg" class="msg"></p>
+
+      <form id="form-ship" hidden>
+        <fieldset>
+          <legend>Dati dal faro (sola lettura)</legend>
+          <div class="readonly-grid">
+            <div>Taglia<br /><strong id="f-size">-</strong></div>
+            <div>Arrivo tra (giorni)<br /><strong id="f-offset">-</strong></div>
+            <div>Occupazione (giorni)<br /><strong id="f-occupation">-</strong></div>
+          </div>
+        </fieldset>
+
+        <label>Nome nave *
+          <input id="i-name" type="text" maxlength="100" required />
+        </label>
+        <label>Note
+          <textarea id="i-notes" maxlength="500" rows="2"></textarea>
+        </label>
+
+        <button id="btn-create" type="submit">Crea nave (Pending)</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Navi registrate</h2>
+      <table id="ships">
+        <thead>
+          <tr>
+            <th>Id</th><th>Nome</th><th>Taglia</th>
+            <th>Banchina</th><th>Arrivo</th><th>Durata</th><th>Stato</th><th>Note</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Banchine <small>(sola lettura)</small></h2>
+      <table id="berths">
+        <thead>
+          <tr>
+            <th>Banchina</th><th>Taglia</th><th>Stato oggi</th><th>Nave corrente</th><th>Prossima prenotazione</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <button id="btn-arrival" class="page-primary-action" type="button">Nuovo arrivo dal faro</button>
+
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
