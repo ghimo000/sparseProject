@@ -6,13 +6,13 @@ BlueHarbor è un'applicazione didattica per la gestione degli arrivi delle navi 
 
 - Windows
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)
-- SQL Server Express LocalDB, con l'istanza predefinita `MSSQLLocalDB`
+- SQL Server 2022 o successivo, con autenticazione Windows abilitata
 
-Per controllare che .NET e LocalDB siano disponibili:
+Per controllare che .NET e il servizio SQL Server siano disponibili:
 
 ```powershell
 dotnet --version
-sqllocaldb info
+Get-Service MSSQLSERVER
 ```
 
 ## Avvio dell'app
@@ -29,7 +29,7 @@ Avviare quindi l'applicazione:
 dotnet run --project app/BlueHarbor.Api/BlueHarbor.Api.csproj -- --urls http://localhost:5000
 ```
 
-Al primo avvio l'app crea il database locale e applica automaticamente le migration disponibili.
+Al primo avvio l'app crea il database `BlueHarbor` sull'istanza SQL Server configurata e applica automaticamente le migration disponibili.
 
 Aprire nel browser [http://localhost:5000](http://localhost:5000).
 
@@ -50,13 +50,14 @@ Per compilare il progetto senza avviarlo:
 dotnet build app/BlueHarbor.Api/BlueHarbor.Api.csproj
 ```
 
-## Problemi con LocalDB
+## Configurazione SQL Server
 
-Se l'app non riesce a collegarsi al database, verificare che l'istanza predefinita esista e avviarla:
+La configurazione predefinita usa l'istanza SQL Server locale predefinita con autenticazione Windows:
 
-```powershell
-sqllocaldb info MSSQLLocalDB
-sqllocaldb start MSSQLLocalDB
+```text
+Server=.;Database=BlueHarbor;Trusted_Connection=True;TrustServerCertificate=True
 ```
 
-La stringa di connessione si trova in `app/BlueHarbor.Api/appsettings.json`.
+La stringa si trova in `app/BlueHarbor.Api/appsettings.json` e puo essere sovrascritta senza modificare il file impostando la variabile d'ambiente `ConnectionStrings__BlueHarbor`.
+
+Se l'app non riesce a collegarsi, verificare che `MSSQLSERVER` sia in esecuzione e che l'utente Windows che avvia l'app abbia accesso all'istanza e al database.

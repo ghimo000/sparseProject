@@ -32,7 +32,7 @@ L'applicazione segue una struttura semplice a tre livelli:
             |
             | Entity Framework Core
             v
-[ SQL Server LocalDB ]
+[ SQL Server ]
 ```
 
 ### Frontend
@@ -63,11 +63,13 @@ Il backend e una Web API ASP.NET Core.
 
 ### Database
 
-La persistenza usa SQL Server LocalDB tramite Entity Framework Core.
+La persistenza usa SQL Server tramite Entity Framework Core. Lo schema e versionato
+con migration EF Core, applicate automaticamente all'avvio dell'applicazione.
 
 Il database salva:
 
 - le navi registrate;
+- le assegnazioni delle navi alle banchine;
 - il giorno virtuale corrente.
 
 Le banchine non sono salvate in tabella: sono un elenco fisso nel codice, perche la
@@ -133,10 +135,23 @@ Campi principali:
 - `Name`: nome inserito dall'Operatore.
 - `Notes`: note opzionali.
 - `Size`: dimensione nave (`S`, `M`, `L`, `XL`).
-- `ArrivalDay`: giorno virtuale pianificato di ingresso in banchina.
+- `RequestedArrivalDay`: giorno virtuale di arrivo richiesto, immutabile.
 - `OccupationDays`: durata occupazione.
-- `BerthName`: banchina assegnata, per esempio `M-1`; resta `null` se la nave e `Pending`.
 - `Status`: stato nave (`Pending`, `Assigned`, `Departed`).
+
+### BerthAssignment
+
+Rappresenta l'assegnazione persistita di una nave a una banchina.
+
+Campi principali:
+
+- `Id`: identificativo database.
+- `ShipId`: chiave esterna verso `Ships`; ha un indice univoco.
+- `BerthName`: nome della banchina assegnata, per esempio `M-1`.
+- `StartDay`: primo giorno virtuale di occupazione.
+
+La relazione e uno-a-zero-o-uno: una nave puo non avere un'assegnazione oppure averne
+una sola. Eliminando una nave viene eliminata anche la relativa assegnazione (`CASCADE`).
 
 ### AppState
 
@@ -159,6 +174,11 @@ Non viene salvata nel database. L'elenco e fisso nel codice:
 - `S-1`, `S-2`, `S-3`, `S-4`
 
 Ogni banchina puo ospitare solo navi della propria dimensione.
+
+### Tabelle tecniche
+
+`__EFMigrationsHistory` e gestita da Entity Framework Core e registra quali migration
+sono gia state applicate. Non contiene dati di dominio.
 
 ## 5. Flusso logico dell'applicazione
 
@@ -290,7 +310,7 @@ Regole:
 Le finestre temporali sono trattate cosi:
 
 ```text
-[ArrivalDay, ArrivalDay + OccupationDays)
+[StartDay, StartDay + OccupationDays)
 ```
 
 Quindi una nave che termina al giorno 10 libera la banchina per una nave che inizia al

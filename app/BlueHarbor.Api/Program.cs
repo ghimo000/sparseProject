@@ -13,7 +13,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-// Salva i dati con EF Core su SQL Server LocalDB.
+// Salva i dati con EF Core sull'istanza SQL Server configurata.
 builder.Services.AddDbContext<BlueHarborDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("BlueHarbor")));
 
@@ -33,7 +33,7 @@ builder.Services.AddDataProtection();
 
 var app = builder.Build();
 
-// Crea il database locale e applica le migration mancanti prima di avviare l'app.
+// Crea il database e applica le migration mancanti prima di avviare l'app.
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BlueHarborDbContext>();
