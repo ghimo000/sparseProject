@@ -27,8 +27,8 @@ public class BerthSchedulerService
             .ToList();
     }
 
-    /// <summary>Assegna una nave Pending alla prima banchina e finestra disponibili.</summary>
-    public async Task<AssignShipResponse?> AssignAsync(int shipId)
+    /// <summary>Assegna una nave Pending alla banchina scelta dallo Scheduler, al primo slot libero su di essa.</summary>
+    public async Task<AssignShipResponse?> AssignAsync(int shipId, string berthName)
     {
         var ship = await _db.Ships.Include(s => s.Assignment).FirstOrDefaultAsync(s => s.Id == shipId);
 
@@ -42,22 +42,55 @@ public class BerthSchedulerService
             throw new InvalidOperationException("Solo le navi Pending possono essere assegnate.");
         }
 
+        var berth = Berth.All.FirstOrDefault(b => b.Name == berthName);
+
+        if (berth is null || berth.Size != ship.Size)
+        {
+            throw new InvalidOperationException("La banchina scelta non e compatibile con la taglia della nave.");
+        }
+
         var requestedDay = ship.RequestedArrivalDay;
         var assignedShips = await GetAssignedShipsAsync();
-        var slot = FindFirstAvailableSlot(ship, assignedShips);
+        var startDay = FindFirstAvailableSlotForBerth(berth, ship, assignedShips);
 
         ship.Assignment = new BerthAssignment
         {
             ShipId = ship.Id,
-            BerthName = slot.BerthName,
-            StartDay = slot.StartDay
+            BerthName = berth.Name,
+            StartDay = startDay
         };
         ship.Status = ShipStatus.Assigned;
 
         await _db.SaveChangesAsync();
 
-        var wasMoved = slot.StartDay != requestedDay;
+        var wasMoved = startDay != requestedDay;
         return new AssignShipResponse(ship, wasMoved, wasMoved ? MovedMessage : null);
+    }
+
+    /// <summary>Elenca le banchine compatibili per taglia con una nave Pending, indicando se e quando sono libere.</summary>
+    public async Task<IReadOnlyList<AvailableBerthResponse>?> GetAvailableBerthsForShipAsync(int shipId)
+    {
+        var ship = await _db.Ships.Include(s => s.Assignment).FirstOrDefaultAsync(s => s.Id == shipId);
+
+        if (ship is null || ship.Status != ShipStatus.Pending)
+        {
+            return null;
+        }
+
+        var assignedShips = await GetAssignedShipsAsync();
+
+        return Berth.All
+            .Where(berth => berth.Size == ship.Size)
+            .Select(berth =>
+            {
+                var freeAtRequestedDay = IsBerthFree(berth.Name, ship.RequestedArrivalDay, ship.OccupationDays, assignedShips);
+                var nextFreeDay = freeAtRequestedDay
+                    ? ship.RequestedArrivalDay
+                    : FindFirstAvailableSlotForBerth(berth, ship, assignedShips);
+
+                return new AvailableBerthResponse(berth.Name, berth.Size, freeAtRequestedDay, nextFreeDay);
+            })
+            .ToList();
     }
 
     private static BerthStatusResponse ToBerthStatus(
@@ -84,24 +117,17 @@ public class BerthSchedulerService
             nextReservation is null ? null : ShipSummary.FromShip(nextReservation));
     }
 
-    private Assignment FindFirstAvailableSlot(Ship ship, IReadOnlyList<Ship> assignedShips)
+    private static int FindFirstAvailableSlotForBerth(Berth berth, Ship ship, IReadOnlyList<Ship> assignedShips)
     {
-        var compatibleBerths = Berth.All
-            .Where(berth => berth.Size == ship.Size)
-            .ToList();
-
         for (var startDay = ship.RequestedArrivalDay; startDay < ship.RequestedArrivalDay + 10000; startDay++)
         {
-            foreach (var berth in compatibleBerths)
+            if (IsBerthFree(berth.Name, startDay, ship.OccupationDays, assignedShips))
             {
-                if (IsBerthFree(berth.Name, startDay, ship.OccupationDays, assignedShips))
-                {
-                    return new Assignment(berth.Name, startDay);
-                }
+                return startDay;
             }
         }
 
-        throw new InvalidOperationException("Nessuno slot disponibile trovato.");
+        throw new InvalidOperationException("Nessuno slot disponibile trovato su questa banchina.");
     }
 
     private static bool IsBerthFree(
@@ -126,6 +152,4 @@ public class BerthSchedulerService
             .Where(ship => ship.Status == ShipStatus.Assigned && ship.Assignment != null)
             .OrderBy(ship => ship.Assignment!.StartDay)
             .ToListAsync();
-
-    private sealed record Assignment(string BerthName, int StartDay);
 }

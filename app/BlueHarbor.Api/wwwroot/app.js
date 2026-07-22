@@ -4,33 +4,91 @@ const $ = (id) => document.getElementById(id);
 // I dati del faro per l'arrivo in corso: prima anteprima, poi conferma.
 let currentArrival = null;
 
-// Aggiorna il giorno virtuale mostrato nella pagina Operatore.
+// Giorno virtuale corrente, noto solo qui: serve a calcolare la data reale dell'anteprima faro.
+let currentVirtualDay = 0;
+
+// Nave attualmente in modifica inline nella tabella (solo una alla volta).
+let editingShipId = null;
+
+// Disabilita un bottone durante un'azione async, cosi l'utente vede che qualcosa sta succedendo.
+async function withBusy(button, busyLabel, action) {
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = busyLabel;
+
+  try {
+    return await action();
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+// Aggiorna la data reale mostrata nella pagina Operatore (mai il giorno virtuale).
 async function refreshState() {
   const state = await API.getState();
-  $("current-day").textContent = state.currentDay;
-  $("current-date").textContent = state.currentDate;
+  currentVirtualDay = state.currentDay;
+  $("current-date").textContent = Dates.formatVirtualDay(state.currentDay);
 }
 
 // Carica tutte le navi registrate e le mostra nella tabella Operatore.
 async function refreshShips() {
   const ships = await API.getShips();
+  // Lo storico dell'Operatore e una vista propria: nascondere una nave qui non deve
+  // toccare ne il calendario ne lo storico dello Scheduler, quindi si filtra solo qui.
+  const visibleShips = ships.filter((ship) => !ship.hiddenFromOperatorHistory);
   const tbody = document.querySelector("#ships tbody");
 
   tbody.innerHTML = "";
 
-  for (const ship of ships) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${ship.id}</td>
-      <td>${escapeHtml(ship.name)}</td>
-      <td>${ship.size}</td>
-      <td>${escapeHtml(ship.berthName ?? "-")}</td>
-      <td>${formatVirtualDay(ship.arrivalDay)}</td>
-      <td>${ship.occupationDays}</td>
-      <td>${ship.status}</td>
-      <td>${escapeHtml(ship.notes ?? "")}</td>`;
-    tbody.appendChild(tr);
+  for (const ship of visibleShips) {
+    tbody.appendChild(ship.status === "Pending" && ship.id === editingShipId
+      ? buildEditableRow(ship)
+      : buildShipRow(ship));
   }
+}
+
+// Riga normale, sola lettura.
+function buildShipRow(ship) {
+  const tr = document.createElement("tr");
+  const canEdit = ship.status === "Pending";
+  tr.innerHTML = `
+    <td>${ship.id}</td>
+    <td>${escapeHtml(ship.name)}</td>
+    <td>${ship.size}</td>
+    <td>${escapeHtml(ship.berthName ?? "-")}</td>
+    <td>${Dates.formatVirtualDay(ship.arrivalDay)}</td>
+    <td>${Dates.formatVirtualDay(ship.arrivalDay + ship.occupationDays - 1)}</td>
+    <td>${ship.status}</td>
+    <td>${escapeHtml(ship.notes ?? "")}</td>
+    <td>
+      <div class="table-actions">
+        ${canEdit ? `<button type="button" data-edit-id="${ship.id}">Modifica</button>` : ""}
+        <button class="danger" type="button" data-hide-operator-history-id="${ship.id}">Cancella</button>
+      </div>
+    </td>`;
+  return tr;
+}
+
+// Riga in modifica: nome e note diventano campi editabili.
+function buildEditableRow(ship) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${ship.id}</td>
+    <td class="inline-edit"><input id="edit-name" type="text" maxlength="100" value="${escapeHtmlAttr(ship.name)}" /></td>
+    <td>${ship.size}</td>
+    <td>${escapeHtml(ship.berthName ?? "-")}</td>
+    <td>${Dates.formatVirtualDay(ship.arrivalDay)}</td>
+    <td>${Dates.formatVirtualDay(ship.arrivalDay + ship.occupationDays - 1)}</td>
+    <td>${ship.status}</td>
+    <td class="inline-edit"><textarea id="edit-notes" maxlength="500" rows="2">${escapeHtml(ship.notes ?? "")}</textarea></td>
+    <td>
+      <div class="table-actions">
+        <button type="button" data-save-id="${ship.id}">Salva</button>
+        <button class="secondary" type="button" data-cancel-edit="1">Annulla</button>
+      </div>
+    </td>`;
+  return tr;
 }
 
 // Mostra all'Operatore lo stato banchine in sola lettura.
@@ -52,14 +110,14 @@ async function refreshBerths() {
   }
 }
 
-// Chiede al faro una nuova anteprima e mostra i dati in sola lettura.
+// Chiede al faro una nuova anteprima e mostra i dati in sola lettura, con data reale d'arrivo.
 async function generateArrival() {
   currentArrival = await API.generateArrival();
   $("f-size").textContent = currentArrival.size;
-  $("f-offset").textContent = currentArrival.arrivalDayOffset;
+  $("f-arrival").textContent = Dates.formatVirtualDay(currentVirtualDay + currentArrival.arrivalDayOffset);
   $("f-occupation").textContent = currentArrival.occupationDays;
+  $("btn-arrival").hidden = true;
   $("form-ship").hidden = false;
-  $("msg").textContent = "";
   $("i-name").focus();
 }
 
@@ -71,50 +129,70 @@ async function createShip(event) {
     return;
   }
 
-  await API.createShip({
-    name: $("i-name").value,
-    notes: $("i-notes").value,
-    size: currentArrival.size,
-    arrivalDayOffset: currentArrival.arrivalDayOffset,
-    occupationDays: currentArrival.occupationDays,
-  });
+  await withBusy($("btn-create"), "Registrazione...", () =>
+    API.createShip({
+      name: $("i-name").value,
+      notes: $("i-notes").value,
+      size: currentArrival.size,
+      arrivalDayOffset: currentArrival.arrivalDayOffset,
+      occupationDays: currentArrival.occupationDays,
+    })
+  );
 
   $("form-ship").reset();
   $("form-ship").hidden = true;
+  $("f-size").textContent = "-";
+  $("f-arrival").textContent = "-";
+  $("f-occupation").textContent = "-";
+  $("btn-arrival").hidden = false;
   currentArrival = null;
-  $("msg").textContent = "";
+  Toast.success("Nave registrata.");
   await refreshShips();
   await refreshBerths();
 }
 
+// Attiva la modifica inline di nome/note per una nave Pending.
+function startEdit(id) {
+  editingShipId = id;
+  refreshShips();
+}
+
+// Annulla la modifica inline senza salvare.
+function cancelEdit() {
+  editingShipId = null;
+  refreshShips();
+}
+
+// Salva nome/note della nave in modifica.
+async function saveShip(id, button) {
+  await withBusy(button, "Salvataggio...", () =>
+    API.updateShip(id, {
+      name: $("edit-name").value,
+      notes: $("edit-notes").value,
+    })
+  );
+  editingShipId = null;
+  Toast.success("Nave aggiornata.");
+  await refreshShips();
+}
+
+// Nasconde una nave dallo storico dell'Operatore: il calendario e lo storico dello Scheduler restano invariati.
+async function hideFromOperatorHistory(id, button) {
+  await withBusy(button, "Cancellazione...", () => API.hideFromOperatorHistory(id));
+  Toast.success("Nave rimossa dallo storico dell'Operatore.");
+  await refreshShips();
+}
+
 // Aggiorna tutti i dati visibili senza ricaricare la pagina.
 async function refreshAll() {
-  $("msg").textContent = "";
   await refreshState();
   await refreshShips();
   await refreshBerths();
 }
 
-// Mostra un messaggio di errore semplice nella pagina.
+// Mostra un messaggio di errore visibile come notifica.
 function showError(error) {
-  $("msg").textContent = "Errore: " + error.message;
-}
-
-// Converte un giorno virtuale nella data fittizia mostrata in UI.
-function formatVirtualDay(day) {
-  return `Giorno ${day} - ${formatDate(addDays(new Date(2026, 5, 1), day))}`;
-}
-
-function addDays(date, days) {
-  const copy = new Date(date);
-  copy.setDate(copy.getDate() + days);
-  return copy;
-}
-
-function formatDate(date) {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${day}-${month}-${date.getFullYear()}`;
+  Toast.error("Errore: " + error.message);
 }
 
 // Mostra lo stato banchina come dato calcolato, senza introdurre nuovi stati nave.
@@ -130,11 +208,7 @@ function formatShipSummary(ship) {
     return "-";
   }
 
-  return `${escapeHtml(ship.name)} (${formatPeriod(ship.arrivalDay, ship.endDay)})`;
-}
-
-function formatPeriod(startDay, endDay) {
-  return `giorni ${startDay}-${endDay}`;
+  return `${escapeHtml(ship.name)} (${Dates.formatVirtualDay(ship.arrivalDay)} - ${Dates.formatVirtualDay(ship.endDay)})`;
 }
 
 // Protegge la tabella da testo inserito dall'utente interpretato come HTML.
@@ -142,6 +216,11 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char])
   );
+}
+
+// Come escapeHtml, ma sicura anche dentro un attributo value="...".
+function escapeHtmlAttr(value) {
+  return escapeHtml(value);
 }
 
 // Collega il pulsante del faro alla generazione dell'anteprima.
@@ -162,10 +241,50 @@ $("btn-refresh").addEventListener("click", async () => {
   }
 });
 
+// Collega il toggle del tema chiaro/scuro e ne aggiorna l'icona.
+function syncThemeIcon() {
+  $("btn-theme").innerHTML = Theme.get() === "dark" ? Theme.icons.sun : Theme.icons.moon;
+}
+
+$("btn-theme").addEventListener("click", () => {
+  Theme.toggle();
+  syncThemeIcon();
+});
+
+syncThemeIcon();
+
 // Collega il form alla registrazione della nave.
 $("form-ship").addEventListener("submit", async (event) => {
   try {
     await createShip(event);
+  } catch (error) {
+    showError(error);
+  }
+});
+
+// Gestisce i pulsanti generati nella tabella navi (modifica, salva, annulla).
+document.querySelector("#ships tbody").addEventListener("click", async (event) => {
+  const editId = event.target.dataset.editId;
+  const saveId = event.target.dataset.saveId;
+  const cancel = event.target.dataset.cancelEdit;
+  const hideOperatorHistoryId = event.target.dataset.hideOperatorHistoryId;
+
+  try {
+    if (editId) {
+      startEdit(Number(editId));
+    }
+
+    if (saveId) {
+      await saveShip(Number(saveId), event.target);
+    }
+
+    if (cancel) {
+      cancelEdit();
+    }
+
+    if (hideOperatorHistoryId) {
+      await hideFromOperatorHistory(Number(hideOperatorHistoryId), event.target);
+    }
   } catch (error) {
     showError(error);
   }

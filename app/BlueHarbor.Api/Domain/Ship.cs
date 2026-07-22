@@ -27,4 +27,10 @@ public class Ship
 
     /// <summary>Assegnazione a banchina, presente solo quando la nave non e piu Pending.</summary>
     public BerthAssignment? Assignment { get; set; }
+
+    /// <summary>Nascosta dallo storico dello Scheduler. Non influisce sul calendario ne sullo storico dell'Operatore.</summary>
+    public bool HiddenFromSchedulerHistory { get; set; }
+
+    /// <summary>Nascosta dallo storico dell'Operatore. Non influisce sul calendario ne sullo storico dello Scheduler.</summary>
+    public bool HiddenFromOperatorHistory { get; set; }
 }

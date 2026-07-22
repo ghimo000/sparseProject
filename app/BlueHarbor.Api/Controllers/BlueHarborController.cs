@@ -1,5 +1,6 @@
 using BlueHarbor.Api.Contracts;
 using BlueHarbor.Api.Data;
+using BlueHarbor.Api.Domain;
 using BlueHarbor.Api.Services;
 using BlueHarbor.Faro;
 using Microsoft.AspNetCore.Mvc;
@@ -74,7 +75,9 @@ public class BlueHarborController : ControllerBase
                 ArrivalDay = ship.Assignment != null ? ship.Assignment.StartDay : ship.RequestedArrivalDay,
                 ship.OccupationDays,
                 BerthName = ship.Assignment != null ? ship.Assignment.BerthName : null,
-                ship.Status
+                ship.Status,
+                ship.HiddenFromSchedulerHistory,
+                ship.HiddenFromOperatorHistory
             })
             .OrderBy(ship => ship.ArrivalDay)
             .ThenBy(ship => ship.BerthName)
@@ -88,6 +91,20 @@ public class BlueHarborController : ControllerBase
     public async Task<IActionResult> GetBerths()
     {
         var berths = await _berths.GetBerthStatusesAsync();
+        return Ok(berths);
+    }
+
+    /// <summary>GET /api/ships/{id}/available-berths: banchine compatibili per taglia con una nave Pending.</summary>
+    [HttpGet("api/ships/{id:int}/available-berths")]
+    public async Task<IActionResult> GetAvailableBerths(int id)
+    {
+        var berths = await _berths.GetAvailableBerthsForShipAsync(id);
+
+        if (berths is null)
+        {
+            return NotFound();
+        }
+
         return Ok(berths);
     }
 
@@ -105,13 +122,18 @@ public class BlueHarborController : ControllerBase
         return Ok(ship);
     }
 
-    /// <summary>POST /api/ships/{id}/assign: assegna una nave Pending a una banchina.</summary>
+    /// <summary>POST /api/ships/{id}/assign: assegna una nave Pending alla banchina scelta dallo Scheduler.</summary>
     [HttpPost("api/ships/{id:int}/assign")]
-    public async Task<IActionResult> AssignShip(int id)
+    public async Task<IActionResult> AssignShip(int id, [FromBody] AssignShipRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.BerthName))
+        {
+            return BadRequest(new { message = "La banchina e obbligatoria." });
+        }
+
         try
         {
-            var result = await _berths.AssignAsync(id);
+            var result = await _berths.AssignAsync(id, request.BerthName);
 
             if (result is null)
             {
@@ -126,6 +148,34 @@ public class BlueHarborController : ControllerBase
         }
     }
 
+    /// <summary>PATCH /api/ships/{id}: corregge nome/note di una nave finche e ancora Pending.</summary>
+    [HttpPatch("api/ships/{id:int}")]
+    public async Task<IActionResult> UpdateShip(int id, [FromBody] UpdateShipRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var ship = await _db.Ships.FindAsync(id);
+
+        if (ship is null)
+        {
+            return NotFound();
+        }
+
+        if (ship.Status != ShipStatus.Pending)
+        {
+            return Conflict(new { message = "La nave non e piu modificabile." });
+        }
+
+        ship.Name = request.Name.Trim();
+        ship.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+
+        await _db.SaveChangesAsync();
+        return Ok(ship);
+    }
+
     /// <summary>DELETE /api/ships/{id}: cancella una nave e libera l'eventuale banchina assegnata.</summary>
     [HttpDelete("api/ships/{id:int}")]
     public async Task<IActionResult> DeleteShip(int id)
@@ -138,6 +188,46 @@ public class BlueHarborController : ControllerBase
         }
 
         _db.Ships.Remove(ship);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// DELETE /api/ships/{id}/scheduler-history: nasconde la nave solo dallo storico dello Scheduler.
+    /// La nave resta invariata per il Calendario e per lo storico dell'Operatore.
+    /// </summary>
+    [HttpDelete("api/ships/{id:int}/scheduler-history")]
+    public async Task<IActionResult> HideFromSchedulerHistory(int id)
+    {
+        var ship = await _db.Ships.FindAsync(id);
+
+        if (ship is null)
+        {
+            return NotFound();
+        }
+
+        ship.HiddenFromSchedulerHistory = true;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// DELETE /api/ships/{id}/operator-history: nasconde la nave solo dallo storico dell'Operatore.
+    /// La nave resta invariata per il Calendario e per lo storico dello Scheduler.
+    /// </summary>
+    [HttpDelete("api/ships/{id:int}/operator-history")]
+    public async Task<IActionResult> HideFromOperatorHistory(int id)
+    {
+        var ship = await _db.Ships.FindAsync(id);
+
+        if (ship is null)
+        {
+            return NotFound();
+        }
+
+        ship.HiddenFromOperatorHistory = true;
         await _db.SaveChangesAsync();
 
         return NoContent();

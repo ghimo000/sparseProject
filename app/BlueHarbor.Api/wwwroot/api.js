@@ -35,6 +35,29 @@ const API = {
     return res.json();
   },
 
+  // Legge le banchine compatibili per taglia con una nave Pending, e quando sono libere.
+  async getAvailableBerths(shipId) {
+    const res = await fetch(`/api/ships/${shipId}/available-berths`);
+    if (!res.ok) throw new Error("Impossibile leggere le banchine disponibili.");
+    return res.json();
+  },
+
+  // Aggiorna nome e note di una nave, consentito solo finche e Pending.
+  async updateShip(id, payload) {
+    const res = await fetch(`/api/ships/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const problem = await res.json().catch(() => null);
+      throw new Error(problem?.message ?? problem?.title ?? "Modifica nave fallita.");
+    }
+
+    return res.json();
+  },
+
   // Registra una nave unendo dati del faro e metadati inseriti dall'Operatore.
   async createShip(payload) {
     const res = await fetch("/api/ships", {
@@ -51,9 +74,13 @@ const API = {
     return res.json();
   },
 
-  // Assegna una nave Pending alla prima banchina disponibile.
-  async assignShip(id) {
-    const res = await fetch(`/api/ships/${id}/assign`, { method: "POST" });
+  // Assegna una nave Pending alla banchina scelta dallo Scheduler.
+  async assignShip(id, berthName) {
+    const res = await fetch(`/api/ships/${id}/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ berthName }),
+    });
 
     if (!res.ok) {
       const problem = await res.json().catch(() => null);
@@ -67,5 +94,17 @@ const API = {
   async deleteShip(id) {
     const res = await fetch(`/api/ships/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Cancellazione nave fallita.");
+  },
+
+  // Nasconde una nave solo dallo storico dello Scheduler: calendario e storico Operatore non cambiano.
+  async hideFromSchedulerHistory(id) {
+    const res = await fetch(`/api/ships/${id}/scheduler-history`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Cancellazione dallo storico fallita.");
+  },
+
+  // Nasconde una nave solo dallo storico dell'Operatore: calendario e storico Scheduler non cambiano.
+  async hideFromOperatorHistory(id) {
+    const res = await fetch(`/api/ships/${id}/operator-history`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Cancellazione dallo storico fallita.");
   },
 };

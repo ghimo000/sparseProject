@@ -7,15 +7,29 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Override locale (solo su questa macchina, non versionato): punta a LocalDB.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     // Gli enum escono come testo, ad esempio "XL" o "Pending".
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-// Salva i dati con EF Core sull'istanza SQL Server configurata.
+// Salva i dati con EF Core: SQL Server di default, SQLite solo se la config locale lo richiede (vedi appsettings.Local.json).
+var connectionString = builder.Configuration.GetConnectionString("BlueHarbor");
+var useSqlite = builder.Configuration["Database:Provider"] == "Sqlite";
 builder.Services.AddDbContext<BlueHarborDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("BlueHarbor")));
+{
+    if (useSqlite)
+    {
+        options.UseSqlite(connectionString);
+    }
+    else
+    {
+        options.UseSqlServer(connectionString);
+    }
+});
 
 // Sorgente degli arrivi nave: oggi e un generatore casuale.
 builder.Services.AddScoped<IShipArrivalSource, RandomShipArrivalSource>();
@@ -33,11 +47,19 @@ builder.Services.AddDataProtection();
 
 var app = builder.Build();
 
-// Crea il database e applica le migration mancanti prima di avviare l'app.
+// Crea il database prima di avviare l'app: migration su SQL Server, schema diretto dal modello su SQLite locale
+// (le migration sono scritte per SQL Server e non vanno rigiocate contro un provider diverso).
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BlueHarborDbContext>();
-    dbContext.Database.Migrate();
+    if (useSqlite)
+    {
+        dbContext.Database.EnsureCreated();
+    }
+    else
+    {
+        dbContext.Database.Migrate();
+    }
 }
 
 const string AuthCookieName = "BlueHarborAuth";
@@ -49,39 +71,61 @@ app.MapPost("/login", async (HttpContext context) =>
 {
     var form = await context.Request.ReadFormAsync();
     var returnUrl = NormalizeReturnUrl(form["returnUrl"].ToString());
-    var protectedPage = GetProtectedPage(returnUrl);
-
-    if (protectedPage is null)
-    {
-        context.Response.Redirect("/");
-        return;
-    }
 
     var username = form["username"].ToString();
     var password = form["password"].ToString();
 
-    if (IsAuthorized(username, password, protectedPage.Value.User, protectedPage.Value.Password))
-    {
-        context.Response.Cookies.Append(
-            AuthCookieName,
-            authProtector.Protect(protectedPage.Value.Role),
-            new CookieOptions
-            {
-                HttpOnly = true,
-                IsEssential = true,
-                SameSite = SameSiteMode.Lax
-            });
+    // Un solo tasto di accesso: il ruolo si deduce dalle credenziali, non da quale bottone e stato premuto.
+    var role = ResolveRole(username, password);
 
-        context.Response.Redirect(returnUrl);
+    if (role is null)
+    {
+        context.Response.Redirect($"/?returnUrl={Uri.EscapeDataString(returnUrl)}&error=1");
         return;
     }
 
-    context.Response.Redirect($"/login.html?returnUrl={Uri.EscapeDataString(returnUrl)}&error=1");
+    context.Response.Cookies.Append(
+        AuthCookieName,
+        authProtector.Protect(role),
+        new CookieOptions
+        {
+            HttpOnly = true,
+            IsEssential = true,
+            SameSite = SameSiteMode.Lax
+        });
+
+    // Se l'utente era arrivato al login per una pagina protetta del proprio ruolo, ci torna;
+    // altrimenti finisce sulla pagina di default del ruolo con cui si e autenticato.
+    var requestedPage = GetProtectedPage(returnUrl);
+    var landingUrl = requestedPage is not null && requestedPage.Value.Role == role
+        ? returnUrl
+        : DefaultPageForRole(role);
+
+    context.Response.Redirect(landingUrl);
 });
 
-// Login demo: protegge solo le due pagine di ruolo.
+// Cancella il cookie di sessione e torna al login.
+app.MapPost("/logout", (HttpContext context) =>
+{
+    context.Response.Cookies.Delete(AuthCookieName);
+    context.Response.Redirect("/");
+});
+
+// Login demo: protegge le due pagine di ruolo, piu il calendario che accetta un ruolo qualsiasi.
 app.Use(async (context, next) =>
 {
+    if (context.Request.Path == "/calendar.html")
+    {
+        if (IsAnyRoleAuthorized(context, authProtector, AuthCookieName))
+        {
+            await next();
+            return;
+        }
+
+        context.Response.Redirect($"/?returnUrl={Uri.EscapeDataString(context.Request.Path)}");
+        return;
+    }
+
     var protectedPage = GetProtectedPage(context.Request.Path);
 
     if (protectedPage is null)
@@ -96,7 +140,7 @@ app.Use(async (context, next) =>
         return;
     }
 
-    context.Response.Redirect($"/login.html?returnUrl={Uri.EscapeDataString(context.Request.Path)}");
+    context.Response.Redirect($"/?returnUrl={Uri.EscapeDataString(context.Request.Path)}");
 });
 
 // Pubblica i file HTML, CSS e JS dentro wwwroot.
@@ -123,11 +167,27 @@ static (string User, string Password, string Role)? GetProtectedPage(PathString 
     return null;
 }
 
-// Controlla utente e password inseriti nella pagina di login.
-static bool IsAuthorized(string username, string password, string expectedUser, string expectedPassword)
+// Deduce il ruolo dalle credenziali inserite nell'unico form di login: prova le credenziali
+// di ciascun ruolo protetto, senza dipendere da quale pagina l'utente stesse per raggiungere.
+static string? ResolveRole(string username, string password)
 {
-    return username == expectedUser && password == expectedPassword;
+    var operatorPage = GetProtectedPage("/operator.html")!.Value;
+    if (username == operatorPage.User && password == operatorPage.Password)
+    {
+        return operatorPage.Role;
+    }
+
+    var schedulerPage = GetProtectedPage("/scheduler.html")!.Value;
+    if (username == schedulerPage.User && password == schedulerPage.Password)
+    {
+        return schedulerPage.Role;
+    }
+
+    return null;
 }
+
+// Pagina di atterraggio predefinita per un ruolo appena autenticato.
+static string DefaultPageForRole(string role) => role == "operator" ? "/operator.html" : "/scheduler.html";
 
 // Controlla il cookie creato dal server dopo il login.
 static bool IsRoleAuthorized(
@@ -144,6 +204,25 @@ static bool IsRoleAuthorized(
     try
     {
         return authProtector.Unprotect(protectedRole) == expectedRole;
+    }
+    catch
+    {
+        return false;
+    }
+}
+
+// Controlla il cookie di sessione senza vincolarlo a un ruolo specifico (usato dal calendario condiviso).
+static bool IsAnyRoleAuthorized(HttpContext context, IDataProtector authProtector, string authCookieName)
+{
+    if (!context.Request.Cookies.TryGetValue(authCookieName, out var protectedRole))
+    {
+        return false;
+    }
+
+    try
+    {
+        var role = authProtector.Unprotect(protectedRole);
+        return role is "operator" or "scheduler";
     }
     catch
     {
