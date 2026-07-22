@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BlueHarbor - Operatore</title>
+  <title>BlueHarbor - Calendario storico</title>
   <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css?v=issue-09" />
 </head>
@@ -22,7 +22,7 @@
         </div>
       </div>
 
-      <span class="sidebar-role">Operatore</span>
+      <span class="sidebar-role">Calendario</span>
 
       <div class="sidebar-date">
         Oggi
@@ -30,13 +30,12 @@
       </div>
 
       <nav class="sidebar-nav">
-        <a href="operator.html" class="active">Registro navi</a>
-        <a href="calendar.html?from=operator">Calendario storico</a>
+        <a id="nav-back" href="#" hidden></a>
+        <a href="calendar.html" class="active">Calendario storico</a>
       </nav>
 
       <div class="sidebar-footer">
         <button id="btn-theme" class="icon-button theme-toggle" type="button" title="Cambia tema chiaro/scuro" aria-label="Cambia tema chiaro/scuro">&#127769;</button>
-        <button id="btn-refresh" class="secondary" type="button">Aggiorna</button>
       </div>
     </aside>
 
@@ -44,7 +43,8 @@
       <div class="content-header">
         <div class="header-title">
           <button id="btn-sidebar-toggle" class="icon-button secondary" type="button" title="Mostra menu" aria-label="Mostra menu" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
-          <h1>Registro navi</h1>
+          <button id="btn-back-icon" class="icon-button secondary" type="button" title="Torna indietro" aria-label="Torna indietro" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
+          <h1>Calendario storico</h1>
         </div>
         <div class="header-actions">
           <button id="btn-logout" class="logout-btn" type="button">Logout</button>
@@ -52,55 +52,45 @@
       </div>
 
       <section class="panel">
-        <div class="panel-header-row">
-          <h2>Registra una nave <small>(Operatore)</small></h2>
-          <button id="btn-arrival" class="secondary" type="button">Nuovo arrivo</button>
+        <div class="calendar-header">
+          <div class="calendar-nav">
+            <button id="btn-prev-month" class="secondary" type="button">&larr; Mese prec.</button>
+            <h3 id="calendar-month-label">-</h3>
+            <button id="btn-next-month" class="secondary" type="button">Mese succ. &rarr;</button>
+          </div>
+          <button id="btn-today" class="secondary" type="button">Vai a oggi</button>
         </div>
 
-        <form id="form-ship" hidden>
-          <fieldset>
-            <legend>Dati dal faro (sola lettura)</legend>
-            <div class="readonly-grid">
-              <div>Taglia<br /><strong id="f-size">-</strong></div>
-              <div>Arrivo previsto<br /><strong id="f-arrival">-</strong></div>
-              <div>Occupazione (giorni)<br /><strong id="f-occupation">-</strong></div>
-            </div>
-          </fieldset>
+        <div class="calendar-weekdays">
+          <span class="calendar-weekday">Lun</span>
+          <span class="calendar-weekday">Mar</span>
+          <span class="calendar-weekday">Mer</span>
+          <span class="calendar-weekday">Gio</span>
+          <span class="calendar-weekday">Ven</span>
+          <span class="calendar-weekday">Sab</span>
+          <span class="calendar-weekday">Dom</span>
+        </div>
 
-          <label>Nome nave *
-            <input id="i-name" type="text" maxlength="100" required />
-          </label>
-          <label>Note
-            <textarea id="i-notes" maxlength="500" rows="2"></textarea>
-          </label>
+        <div id="calendar-grid" class="calendar-grid"></div>
 
-          <button id="btn-create" type="submit">Crea nave (Pending)</button>
-        </form>
+        <div class="calendar-legend">
+          <span><span class="calendar-dot arrival"></span> Arrivi</span>
+          <span><span class="calendar-dot departure"></span> Partenze</span>
+        </div>
       </section>
 
       <section class="panel">
-        <h2>Navi registrate <small>modifica nome/note finche in attesa di assegnazione</small></h2>
-        <table id="ships">
-          <thead>
-            <tr>
-              <th>Id</th><th>Nome</th><th>Taglia</th>
-              <th>Banchina</th><th>Arrivo</th><th>Partenza</th><th>Stato</th><th>Note</th><th>Azioni</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
+        <h2 id="detail-title">Seleziona un giorno</h2>
 
-      <section class="panel">
-        <h2>Banchine <small>(sola lettura)</small></h2>
-        <table id="berths">
-          <thead>
-            <tr>
-              <th>Banchina</th><th>Taglia</th><th>Stato oggi</th><th>Nave corrente</th><th>Prossima prenotazione</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <h3>Stato banchine</h3>
+        <div id="detail-berths" class="berth-status-grid"></div>
+
+        <h3>Arrivi</h3>
+        <ul id="detail-arrivals" class="calendar-detail-list"></ul>
+
+        <h3>Partenze</h3>
+        <ul id="detail-departures" class="calendar-detail-list"></ul>
+
       </section>
     </div>
   </div>
@@ -124,6 +114,6 @@
   <script src="sidebar.js"></script>
   <script src="logout.js"></script>
   <script src="support.js"></script>
-  <script src="app.js"></script>
+  <script src="calendar.js"></script>
 </body>
 </html>
