@@ -19,3 +19,7 @@ artifacts/
 # --- OS ---
 Thumbs.db
 .DS_Store
+
+# --- Config locale (solo questa macchina, usa SQLite) ---
+appsettings.Local.json
+*.local.db
